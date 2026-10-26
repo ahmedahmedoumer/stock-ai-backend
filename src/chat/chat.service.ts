@@ -1,5 +1,6 @@
+import 'dotenv/config';
 import { Injectable, Logger } from '@nestjs/common';
-import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
+import { ChatBedrockConverse, BedrockEmbeddings } from '@langchain/aws';
 import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
 import {
   AIMessage,
@@ -57,8 +58,8 @@ function lastAssistantText(messages: BaseMessage[]): string {
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
   private vectorStore: PGVectorStore;
-  private embeddings: GoogleGenerativeAIEmbeddings;
-  private model: ChatGoogleGenerativeAI;
+  private embeddings: BedrockEmbeddings;
+  private model: ChatBedrockConverse;
 
   constructor(
     private readonly products: ProductService,
@@ -68,15 +69,25 @@ export class ChatService {
     private readonly purchases: PurchaseService,
     private readonly dashboard: DashboardService,
   ) {
-    this.embeddings = new GoogleGenerativeAIEmbeddings({
-      model: 'gemini-embedding-001',
-      outputDimensionality: 768,
-      apiKey: process.env.GOOGLE_API_KEY,
+    // 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 or 1536 dims)
+    this.embeddings = new BedrockEmbeddings({
+      model: 'amazon.titan-embed-text-v2:0',
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
     });
-    this.model = new ChatGoogleGenerativeAI({
-      model: 'gemini-flash-latest',
+
+    // 2. Amazon Bedrock Chat Model (Claude 3.5 Sonnet / Nova Pro via Converse API)
+    this.model = new ChatBedrockConverse({
+      model: 'anthropic.claude-3-5-sonnet-20240620-v1:0', // or amazon.nova-pro-v1:0
       temperature: 0.2,
-      apiKey: process.env.GOOGLE_API_KEY,
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
     });
   }
 
@@ -92,7 +103,7 @@ export class ChatService {
         vectorColumnName: 'embedding',
         metadataColumnName: 'metadata',
       },
-      dimensions: 768,
+      dimensions: 1024, // Matches Titan Embed Text V2 default output dimension
     });
   }
 
