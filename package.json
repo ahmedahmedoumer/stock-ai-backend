@@ -22,6 +22,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
+    "@langchain/aws": "^1.5.0",
     "@langchain/classic": "^1.0.55",
     "@langchain/community": "^1.1.29",
     "@langchain/core": "^1.3.0",
