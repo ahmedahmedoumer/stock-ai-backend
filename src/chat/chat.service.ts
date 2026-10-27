@@ -81,7 +81,7 @@ export class ChatService {
 
     // 2. Amazon Bedrock Chat Model (Claude 3.5 Sonnet / Nova Pro via Converse API)
     this.model = new ChatBedrockConverse({
-      model: 'anthropic.claude-3-5-sonnet-20240620-v1:0', // or amazon.nova-pro-v1:0
+      model: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0', // Note the 'us.' prefix
       temperature: 0.2,
       region: process.env.AWS_REGION || 'us-east-1',
       credentials: {
