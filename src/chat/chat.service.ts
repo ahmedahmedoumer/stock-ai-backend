@@ -70,25 +70,26 @@ export class ChatService {
     private readonly dashboard: DashboardService,
   ) {
     // 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 or 1536 dims)
-    this.embeddings = new BedrockEmbeddings({
-      model: 'amazon.titan-embed-text-v2:0',
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
-    });
+// 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 dims)
+this.embeddings = new BedrockEmbeddings({
+  model: 'amazon.titan-embed-text-v2:0',
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
 
-    // 2. Amazon Bedrock Chat Model (Claude 3.5 Sonnet / Nova Pro via Converse API)
-    this.model = new ChatBedrockConverse({
-      model: 'us.anthropic.claude-3-5-sonnet-20240620-v1:0', // Note the 'us.' prefix
-      temperature: 0.2,
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
-    });
+// 2. Amazon Bedrock Chat Model (Claude 3 Sonnet via Converse API)
+this.model = new ChatBedrockConverse({
+  model: 'us.anthropic.claude-3-sonnet-20240229-v1:0',
+  temperature: 0.2,
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
   }
 
   async initVectorStore() {
