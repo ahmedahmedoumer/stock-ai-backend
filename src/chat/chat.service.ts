@@ -71,6 +71,26 @@ export class ChatService {
   ) {
     // 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 or 1536 dims)
 // 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 dims)
+// this.embeddings = new BedrockEmbeddings({
+//   model: 'amazon.titan-embed-text-v2:0',
+//   region: process.env.AWS_REGION || 'us-east-1',
+//   credentials: {
+//     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+//   },
+// });
+
+// // 2. Amazon Bedrock Chat Model (Claude 3 Sonnet via Converse API)
+// this.model = new ChatBedrockConverse({
+//   model: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
+//   temperature: 0.2,
+//   region: process.env.AWS_REGION || 'us-east-1',
+//   credentials: {
+//     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+//   },
+// });
+
 this.embeddings = new BedrockEmbeddings({
   model: 'amazon.titan-embed-text-v2:0',
   region: process.env.AWS_REGION || 'us-east-1',
@@ -80,9 +100,9 @@ this.embeddings = new BedrockEmbeddings({
   },
 });
 
-// 2. Amazon Bedrock Chat Model (Claude 3 Sonnet via Converse API)
+// 2. Amazon Bedrock Chat Model (Nova Pro)
 this.model = new ChatBedrockConverse({
-  model: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
+  model: 'us.amazon.nova-pro-v1:0',
   temperature: 0.2,
   region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
