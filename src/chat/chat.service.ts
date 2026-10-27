@@ -82,7 +82,7 @@ this.embeddings = new BedrockEmbeddings({
 
 // 2. Amazon Bedrock Chat Model (Claude 3 Sonnet via Converse API)
 this.model = new ChatBedrockConverse({
-  model: 'us.anthropic.claude-3-sonnet-20240229-v1:0',
+  model: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
   temperature: 0.2,
   region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
