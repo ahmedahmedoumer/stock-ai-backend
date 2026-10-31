@@ -46,6 +46,8 @@ function messageText(message: BaseMessage): string {
     .join('');
 }
 
+//sample chnage
+
 function lastAssistantText(messages: BaseMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i];
