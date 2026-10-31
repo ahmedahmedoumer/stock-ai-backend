@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { Injectable, Logger } from '@nestjs/common';
-import { ChatBedrockConverse, BedrockEmbeddings } from '@langchain/aws';
 import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
 import {
   AIMessage,
@@ -10,6 +9,7 @@ import {
   ToolMessage,
   isAIMessage,
 } from '@langchain/core/messages';
+import { OpenAIEmbeddings, ChatOpenAI } from '@langchain/openai';
 import { DashboardService } from '../dashboard/dashboard.service.js';
 import { ProductService } from '../product/product.service.js';
 import { PurchaseService } from '../purchase/purchase.service.js';
@@ -19,6 +19,9 @@ import { WarehouseService } from '../warehouse/warehouse.service.js';
 import { LIVE_API_TOOLS, buildSupportTools } from './chat-tools.js';
 
 const memoryStore = new Map<string, BaseMessage[]>();
+
+/** text-embedding-3-small default output size */
+const OPENAI_EMBEDDING_DIMENSIONS = 1536;
 
 const SYSTEM_PROMPT = `You are a helpful customer support agent for Stock Manager (products, warehouses, sales, and purchases).
 
@@ -58,8 +61,8 @@ function lastAssistantText(messages: BaseMessage[]): string {
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
   private vectorStore: PGVectorStore;
-  private embeddings: BedrockEmbeddings;
-  private model: ChatBedrockConverse;
+  private embeddings: OpenAIEmbeddings;
+  private model: ChatOpenAI;
 
   constructor(
     private readonly products: ProductService,
@@ -69,47 +72,15 @@ export class ChatService {
     private readonly purchases: PurchaseService,
     private readonly dashboard: DashboardService,
   ) {
-    // 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 or 1536 dims)
-// 1. Amazon Bedrock Embeddings (Titan Embeddings V2 / 1024 dims)
-// this.embeddings = new BedrockEmbeddings({
-//   model: 'amazon.titan-embed-text-v2:0',
-//   region: process.env.AWS_REGION || 'us-east-1',
-//   credentials: {
-//     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-//   },
-// });
-
-// // 2. Amazon Bedrock Chat Model (Claude 3 Sonnet via Converse API)
-// this.model = new ChatBedrockConverse({
-//   model: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
-//   temperature: 0.2,
-//   region: process.env.AWS_REGION || 'us-east-1',
-//   credentials: {
-//     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-//   },
-// });
-
-// 1. Amazon Bedrock Embeddings (Titan Embeddings V2)
-    this.embeddings = new BedrockEmbeddings({
-      model: 'amazon.titan-embed-text-v2:0',
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
+    this.embeddings = new OpenAIEmbeddings({
+      model: 'text-embedding-3-small',
+      apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // 2. Amazon Bedrock Chat Model (Amazon Nova Pro)
-    this.model = new ChatBedrockConverse({
-      model: 'us.amazon.nova-pro-v1:0',
+    this.model = new ChatOpenAI({
+      model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4o',
       temperature: 0.2,
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
+      apiKey: process.env.OPENAI_API_KEY,
     });
   }
 
@@ -118,22 +89,25 @@ export class ChatService {
       postgresConnectionOptions: {
         connectionString: process.env.DATABASE_URL,
       },
-      tableName: 'support_docs',
+      // Separate table so Titan/Gemini vectors (different dims) do not collide
+      tableName: process.env.SUPPORT_DOCS_TABLE ?? 'support_docs_openai',
       columns: {
         idColumnName: 'id',
         contentColumnName: 'content',
         vectorColumnName: 'embedding',
         metadataColumnName: 'metadata',
       },
-      dimensions: 1024, // Matches Titan Embed Text V2 default output dimension
+      dimensions: OPENAI_EMBEDDING_DIMENSIONS,
     });
   }
 
   async seedInitialDocs() {
     if (!this.vectorStore) await this.initVectorStore();
 
+    const table = process.env.SUPPORT_DOCS_TABLE ?? 'support_docs_openai';
+
     const { rows } = await this.vectorStore.pool.query<{ n: number }>(
-      'SELECT count(*)::int AS n FROM support_docs',
+      `SELECT count(*)::int AS n FROM ${table}`,
     );
     if ((rows[0]?.n ?? 0) === 0) {
       await this.vectorStore.addDocuments([
@@ -144,7 +118,7 @@ export class ChatService {
     }
 
     const inventory = await this.vectorStore.pool.query<{ n: number }>(
-      `SELECT count(*)::int AS n FROM support_docs WHERE metadata->>'category' = 'inventory'`,
+      `SELECT count(*)::int AS n FROM ${table} WHERE metadata->>'category' = 'inventory'`,
     );
     if ((inventory.rows[0]?.n ?? 0) === 0) {
       await this.vectorStore.addDocuments([
